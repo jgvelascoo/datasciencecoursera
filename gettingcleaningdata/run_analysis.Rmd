@@ -1,0 +1,97 @@
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#      Getting and Cleaning Data Project John Hopkins Coursera
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------
+# Part 1 - Merges the training and the test sets to create one data set
+#-----------------------------------------------------------------------
+
+```{r}
+# Read files in ./UCI HAR Dataset
+activity_labels <- read.table('./UCI HAR Dataset/activity_labels.txt', 
+                              col.names = c('activityId', 'activityName'), quote = "")
+features <- read.table('./UCI HAR Dataset/features.txt', 
+                       col.names = c('featureId', 'featureName'), quote = "")
+
+# Read files in ./UCI HAR Dataset/test
+subject_test <- read.table('./UCI HAR Dataset/test/subject_test.txt', 
+                           col.names = c('subjectId'))
+X_test <- read.table('./UCI HAR Dataset/test/X_test.txt')
+y_test <- read.table('./UCI HAR Dataset/test/y_test.txt')
+
+# Read files in ./UCI HAR Dataset/train
+subject_train <- read.table('./UCI HAR Dataset/train/subject_train.txt', 
+                            col.names = c('subjectId'))
+X_train <- read.table('./UCI HAR Dataset/train/X_train.txt')
+y_train <- read.table('./UCI HAR Dataset/train/y_train.txt')
+
+# Combine test data and set column names
+colnames(X_test) <- features$featureName
+colnames(y_test) <- c('activity')
+test_data <- cbind(subject_test, X_test, y_test)
+
+# Combine train data and set column names
+colnames(X_train) <- features$featureName
+colnames(y_train) <- c('activity')
+train_data <- cbind(subject_train, X_train, y_train)
+
+#Combine test and training data
+data <- rbind(test_data, train_data)
+```
+
+#-----------------------------------------------------------------------
+# Part 2 - Extracts only the measurements on the mean and standard 
+#          deviation for each measurement.
+#-----------------------------------------------------------------------
+
+```{r}
+# Extracts features with mean and std [No include meanFreq()]
+meanStdData <- data[, c(1, 563, grep(pattern = 'mean\\(\\)|std\\(\\)', x = names(data)))]
+# Include the subject ID [col = 1] and activity [col = 563]
+```
+
+#-----------------------------------------------------------------------
+# Part 3 - Uses descriptive activity names to name the activities in the 
+#          data set
+#-----------------------------------------------------------------------
+
+```{r}
+meanStdData$subjectId <- as.factor(meanStdData$subjectId)
+
+# Change activity column by a factor of 6 levels, with the label the
+# same as the activity name
+meanStdData$activity <- factor(meanStdData$activity,
+                               levels = activity_labels$activityId,
+                               labels = activity_labels$activityName)
+```
+
+#-----------------------------------------------------------------------
+# Part 4 - Appropriately labels the data set with descriptive variable 
+#          names.
+#-----------------------------------------------------------------------
+
+```{r}
+# Remove the () for the mean and std in the measurements names
+colnames(meanStdData) <- gsub(pattern = '\\(\\)', replacement = "", x = names(meanStdData))
+
+# Create tidyData file
+write.table(meanStdData, file = 'tidyData.txt', row.names = F, quote = F, sep = "\t")
+```
+
+#-----------------------------------------------------------------------
+# Part 5 - From the data set in step 4, creates a second, independent 
+#          tidy data set with the average of each variable for each 
+#          activity and each subject.
+#-----------------------------------------------------------------------
+
+```{r}
+library(dplyr)
+meanSdData_sIdAct <- group_by(meanStdData, subjectId, activity) %>% summarise_all(funs(mean))
+
+# Create tidyDataMean file
+write.table(meanSdData_sIdAct, file = 'tidyDataMean.txt', 
+            row.names = F, quote = F, sep = "\t")
+```
